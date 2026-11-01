@@ -1,0 +1,64 @@
+:root {
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background: #fafafa;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.devnet-banner {
+  background: #ffd84d;
+  text-align: center;
+  font-weight: 600;
+  padding: 6px 16px;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+button {
+  font: inherit;
+  padding: 8px 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+button.active,
+button.primary {
+  background: #512da8;
+  border-color: #512da8;
+  color: #fff;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e3e3e3;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.mono {
+  font-family: ui-monospace, Consolas, monospace;
+  word-break: break-all;
+}
+
+.status-pass { color: #1b7f3b; }
+.status-fail { color: #b3261e; }
+.status-pending { color: #8a6d00; }

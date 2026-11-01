@@ -1,0 +1,33 @@
+{
+  "_comment": "Shared contract between frontend and backend. Amounts are in lamports (1 SOL = 1,000,000,000 lamports). Replace every REPLACE_ME value with real devnet addresses before Monday.",
+  "network": "devnet",
+  "lessons": [
+    {
+      "id": "lesson-1-connect",
+      "title": "Connect and understand",
+      "mode": "real",
+      "requiresTransaction": false,
+      "pass": "Wallet is connected on devnet and its balance can be read."
+    },
+    {
+      "id": "lesson-2-first-send",
+      "title": "Your first send",
+      "mode": "real",
+      "requiresTransaction": true,
+      "expectedRecipient": "REPLACE_ME_LESSON2_RECIPIENT",
+      "expectedLamports": 100000000,
+      "pass": "Exact submitted transaction succeeded, is confirmed, and matches sender, recipient, and amount."
+    },
+    {
+      "id": "lesson-3-scam-trap",
+      "title": "Scam trap",
+      "mode": "real",
+      "requiresTransaction": true,
+      "expectedRecipient": "REPLACE_ME_LESSON3_RECIPIENT",
+      "lookalikeRecipient": "REPLACE_ME_LESSON3_LOOKALIKE",
+      "trustedReferenceLabel": "First Tx Club Treasury",
+      "expectedLamports": 100000000,
+      "pass": "User picked the trusted recipient and the transaction to it succeeded and is confirmed."
+    }
+  ]
+}
