@@ -1,12 +1,14 @@
-// Sun night (Person A). Pass: wallet connected on devnet and balance can be read.
+// Sun night (Person A). Pass: wallet connected on devnet and new SOL received.
 import { useState } from "react";
 import { connectPhantom } from "../lib/phantom";
 import { getBalanceLamports, lamportsToSol, shortAddress } from "../lib/solana";
+
 const getBalanceSol = async (a) => lamportsToSol(await getBalanceLamports(a));
 
 export default function Lesson1Connect({ lesson }) {
   const [address, setAddress] = useState(null);
   const [balance, setBalance] = useState(null);
+  const [startBalance, setStartBalance] = useState(null); // balance at connect
   const [passed, setPassed] = useState(false);
   const [error, setError] = useState("");
 
@@ -14,8 +16,10 @@ export default function Lesson1Connect({ lesson }) {
     setError("");
     try {
       const addr = await connectPhantom();
+      const b = await getBalanceSol(addr);
       setAddress(addr);
-      setBalance(await getBalanceSol(addr));
+      setBalance(b);
+      setStartBalance(b);
     } catch (e) {
       setError(e.message);
     }
@@ -26,8 +30,9 @@ export default function Lesson1Connect({ lesson }) {
     try {
       const b = await getBalanceSol(address);
       setBalance(b);
-      setPassed(b > 0);
-      if (b === 0) setError("Still 0 SOL. Request from the faucet, wait a few seconds, then check again.");
+      const received = b > startBalance; // pass only if new SOL arrived
+      setPassed(received);
+      if (!received) setError("No new SOL yet. Request from the faucet, wait a few seconds, then check again.");
     } catch (e) {
       setError(e.message);
     }
@@ -52,7 +57,11 @@ export default function Lesson1Connect({ lesson }) {
           </p>
 
           <button onClick={handleCheck}>Check my work</button>
-          {passed && <p style={{ color: "green" }}>Received! The chain shows {balance.toFixed(3)} SOL in your wallet.</p>}
+          {passed && (
+            <p style={{ color: "green" }}>
+              Received {(balance - startBalance).toFixed(3)} SOL! The chain shows {balance.toFixed(3)} SOL in your wallet.
+            </p>
+          )}
         </>
       )}
 
