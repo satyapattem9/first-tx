@@ -5,6 +5,7 @@ import {
   connection, buildTransfer, estimateFeeLamports, signAndSend,
   waitForConfirmation, lamportsToSol, shortAddress,
 } from "../lib/solana";
+import Insight from "../components/Insight.jsx";
 
 const LESSON_WALLET = import.meta.env.VITE_LESSON2_WALLET;
 const AMOUNT = 100_000_000; // 0.1 SOL in lamports
@@ -32,7 +33,7 @@ async function verifyOnChain(signature, from) {
   return { passed: checks.every((c) => c.ok), checks };
 }
 
-export default function Lesson2FirstSend({ lesson, onComplete }) {
+export default function Lesson2FirstSend({ lesson, onComplete, onLearn }) {
   const [address, setAddress] = useState(null);
   const [fee, setFee] = useState(null);
   const [step, setStep] = useState("start"); // start | review | signing | confirming | checking | done
@@ -74,7 +75,10 @@ export default function Lesson2FirstSend({ lesson, onComplete }) {
       setStep("checking");
       const r = await verifyOnChain(sig, address);
       setResult(r);
-      if (r.passed) onComplete();
+      if (r.passed) {
+        onComplete();
+        onLearn(["Signature", "Network fee", "Finality"]);
+      }
       setStep("done");
     } catch (e) {
       setError(e.message);
@@ -113,6 +117,20 @@ export default function Lesson2FirstSend({ lesson, onComplete }) {
             View it on the devnet explorer
           </a>
         </div>
+      )}
+
+      {result?.passed && (
+        <Insight
+          title="You signed, the network confirmed, and it's permanent"
+          why={'there\'s no bank to call and no "undo." Once it confirms, it\'s final.'}
+          words={["Signature", "Network fee", "Finality"]}
+        >
+          <p>
+            Phantom used your private key to <b>sign</b> the transfer. Validators checked it and added it to Solana in seconds.
+            They kept a <b>{fee !== null ? lamportsToSol(fee) : "0.000005"} SOL fee</b> for the work.
+          </p>
+          <p>Signature <code>{shortAddress(signature)}</code> is the receipt. Anyone in the world can look it up, forever.</p>
+        </Insight>
       )}
 
       {error && <p style={{ color: "crimson" }}>{error}</p>}

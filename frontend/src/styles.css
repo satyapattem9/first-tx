@@ -119,3 +119,33 @@ code {
   background: var(--soft); padding: 2px 6px; border-radius: 6px;
 }
 section a { color: var(--purple-dark); font-weight: 800; }
+
+/* Words you know */
+.words { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 20px; }
+.words-title { font-weight: 900; font-size: 13px; letter-spacing: 1px; color: var(--muted); margin-right: 4px; }
+.chip { font-weight: 800; font-size: 14px; padding: 5px 12px; border-radius: 99px; border: 2px dashed #D3D5DE; color: #A3A6B3; }
+.chip.on { border: 2px solid var(--green); background: #E6F7EE; color: var(--green-dark); }
+.chip.new { border: 2px dashed var(--purple); background: #EFEAFF; color: var(--purple-dark); }
+
+/* "What just happened" cards */
+.insight {
+  display: flex; gap: 14px; margin-top: 14px; padding: 16px;
+  border-radius: 16px; background: #F6F3FF; border: 2px solid #E1D9FF;
+}
+.insight.warn { background: #FFF4EE; border-color: #FAD3BF; }
+.insight-icon {
+  flex: none; width: 44px; height: 44px; border-radius: 12px;
+  background: var(--purple); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 22px;
+}
+.insight.warn .insight-icon { background: #E5532B; }
+.insight-kicker { font-weight: 900; font-size: 12px; letter-spacing: 1.2px; color: var(--purple-dark); }
+.insight.warn .insight-kicker { color: #B23A18; }
+.insight h3 { margin: 2px 0 6px; font-size: 19px; font-weight: 900; }
+.insight p { margin: 6px 0; font-size: 15.5px; line-height: 1.5; font-weight: 600; color: #3A3E50; }
+.insight .insight-why { font-weight: 800; color: var(--ink); }
+.insight-term {
+  display: inline-block; margin-top: 6px; font-weight: 800; font-size: 13px;
+  padding: 3px 10px; border-radius: 99px; background: #fff; border: 2px solid #E1D9FF; color: var(--purple-dark);
+}
+.insight.warn .insight-term { border-color: #FAD3BF; color: #B23A18; }

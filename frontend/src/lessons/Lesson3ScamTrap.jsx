@@ -4,6 +4,7 @@ import { connectPhantom } from "../lib/phantom";
 import {
   connection, buildTransfer, signAndSend, waitForConfirmation, lamportsToSol, shortAddress,
 } from "../lib/solana";
+import Insight from "../components/Insight.jsx";
 
 // Same first 4 and last 4 characters. Nobody holds keys to either address,
 // so devnet SOL sent here is gone for good. That's the lesson.
@@ -43,7 +44,7 @@ async function checkPayment(signature) {
   return { passed: checks.every((c) => c.ok), checks, to: info.destination };
 }
 
-export default function Lesson3ScamTrap({ lesson, onComplete }) {
+export default function Lesson3ScamTrap({ lesson, onComplete, onLearn }) {
   const [step, setStep] = useState("ask"); // ask | compare | sending | done
   const [signature, setSignature] = useState(null);
   const [result, setResult] = useState(null);
@@ -61,6 +62,7 @@ export default function Lesson3ScamTrap({ lesson, onComplete }) {
       const r = await checkPayment(sig);
       setResult(r);
       if (r.passed) onComplete();
+      onLearn(["Address poisoning"]);
       setStep("done");
     } catch (e) {
       setError(e.message);
@@ -103,28 +105,51 @@ export default function Lesson3ScamTrap({ lesson, onComplete }) {
       {step === "sending" && <p>Approve in Phantom… then confirming on devnet and checking the chain…</p>}
 
       {step === "done" && result && (
-        <div style={{ border: `2px solid ${result.passed ? "green" : "crimson"}`, borderRadius: 12, padding: 16, marginTop: 12 }}>
-          <strong>{result.passed ? "You paid Maya. Verified onchain!" : "You just paid a scammer."}</strong>
-          {result.checks.map((c) => (
-            <p key={c.label}>{c.ok ? "✅" : "❌"} {c.label}: <code>{c.value}</code></p>
-          ))}
+        <>
+          <div style={{ border: `2px solid ${result.passed ? "green" : "crimson"}`, borderRadius: 12, padding: 16, marginTop: 12 }}>
+            <strong>{result.passed ? "You paid Maya. Verified onchain!" : "You just paid a scammer."}</strong>
+            {result.checks.map((c) => (
+              <p key={c.label}>{c.ok ? "✅" : "❌"} {c.label}: <code>{c.value}</code></p>
+            ))}
 
-          {!result.passed && (
-            <>
-              <p>The transaction is confirmed and final. On mainnet, that money would be gone for good.</p>
-              <p>You sent to: <Addr value={result.to || SCAMMER} color="crimson" /></p>
-              <p>Maya's real address: <Addr value={MAYA} color="green" /></p>
-              <ol>
-                <li>Check the middle of the address, not just the ends.</li>
-                <li>Save people you pay often in your wallet's address book.</li>
-                <li>Send a tiny test amount before a big one.</li>
-              </ol>
-            </>
+            {!result.passed && (
+              <>
+                <p>You sent to: <Addr value={result.to || SCAMMER} color="crimson" /></p>
+                <p>Maya's real address: <Addr value={MAYA} color="green" /></p>
+                <ol>
+                  <li>Check the middle of the address, not just the ends.</li>
+                  <li>Save people you pay often in your wallet's address book.</li>
+                  <li>Send a tiny test amount before a big one.</li>
+                </ol>
+              </>
+            )}
+
+            <a href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`} target="_blank" rel="noreferrer">
+              View it on the devnet explorer
+            </a>
+          </div>
+
+          {result.passed ? (
+            <Insight
+              title="You checked before you signed"
+              why="the network won't stop a payment to the wrong address. A few seconds of checking is your only protection."
+              words={["Address poisoning"]}
+            >
+              <p>You compared the whole address, caught the swap, and sent to Maya. The chain confirms the money went where you meant it to.</p>
+              <p>This trick is called <b>address poisoning</b>. Real scammers use it on mainnet with real money.</p>
+            </Insight>
+          ) : (
+            <Insight
+              warn
+              title="The network did exactly what you signed"
+              why="on mainnet this money is gone. Checking the full address is your job, not the network's."
+              words={["Address poisoning"]}
+            >
+              <p>Nothing broke. Solana doesn't know who you <i>meant</i> to pay, only the address you approved.</p>
+              <p>Scammers make addresses that start and end like real ones, because most wallets only show those 8 characters. This is called <b>address poisoning</b>.</p>
+            </Insight>
           )}
 
-          <a href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`} target="_blank" rel="noreferrer">
-            View it on the devnet explorer
-          </a>
           <div style={{ marginTop: 12 }}>
             {result.passed ? (
               <button onClick={reset}>Replay the lesson</button>
@@ -132,7 +157,7 @@ export default function Lesson3ScamTrap({ lesson, onComplete }) {
               <button onClick={reset}>Try again</button>
             )}
           </div>
-        </div>
+        </>
       )}
 
       {error && <p style={{ color: "crimson" }}>{error}</p>}
