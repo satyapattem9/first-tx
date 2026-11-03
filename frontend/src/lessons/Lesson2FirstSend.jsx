@@ -10,7 +10,6 @@ const LESSON_WALLET = import.meta.env.VITE_LESSON2_WALLET;
 const AMOUNT = 100_000_000; // 0.1 SOL in lamports
 
 // Reads the real transaction from devnet and checks each field.
-// Same shape as the backend /verify response, so it can be swapped later.
 async function verifyOnChain(signature, from) {
   let tx = null;
   for (let i = 0; i < 5 && !tx; i++) {
@@ -33,7 +32,7 @@ async function verifyOnChain(signature, from) {
   return { passed: checks.every((c) => c.ok), checks };
 }
 
-export default function Lesson2FirstSend({ lesson }) {
+export default function Lesson2FirstSend({ lesson, onComplete }) {
   const [address, setAddress] = useState(null);
   const [fee, setFee] = useState(null);
   const [step, setStep] = useState("start"); // start | review | signing | confirming | checking | done
@@ -42,7 +41,12 @@ export default function Lesson2FirstSend({ lesson }) {
   const [error, setError] = useState("");
 
   if (!LESSON_WALLET) {
-    return <section><h2>{lesson.title}</h2><p style={{ color: "crimson" }}>Missing VITE_LESSON2_WALLET in frontend/.env (restart npm run dev after adding it).</p></section>;
+    return (
+      <section>
+        <h2>{lesson.title}</h2>
+        <p style={{ color: "crimson" }}>Missing VITE_LESSON2_WALLET in frontend/.env (restart npm run dev after adding it).</p>
+      </section>
+    );
   }
 
   async function handleReview() {
@@ -68,7 +72,9 @@ export default function Lesson2FirstSend({ lesson }) {
       setStep("confirming");
       await waitForConfirmation(sig);
       setStep("checking");
-      setResult(await verifyOnChain(sig, address));
+      const r = await verifyOnChain(sig, address);
+      setResult(r);
+      if (r.passed) onComplete();
       setStep("done");
     } catch (e) {
       setError(e.message);

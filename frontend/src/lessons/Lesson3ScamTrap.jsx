@@ -43,7 +43,7 @@ async function checkPayment(signature) {
   return { passed: checks.every((c) => c.ok), checks, to: info.destination };
 }
 
-export default function Lesson3ScamTrap({ lesson }) {
+export default function Lesson3ScamTrap({ lesson, onComplete }) {
   const [step, setStep] = useState("ask"); // ask | compare | sending | done
   const [signature, setSignature] = useState(null);
   const [result, setResult] = useState(null);
@@ -58,7 +58,9 @@ export default function Lesson3ScamTrap({ lesson }) {
       const sig = await signAndSend(tx); // Phantom shows 4H7f…h66f either way
       setSignature(sig);
       await waitForConfirmation(sig);
-      setResult(await checkPayment(sig));
+      const r = await checkPayment(sig);
+      setResult(r);
+      if (r.passed) onComplete();
       setStep("done");
     } catch (e) {
       setError(e.message);

@@ -1,11 +1,11 @@
-// Sun night (Person A). Pass: wallet connected on devnet and new SOL received.
+// Lesson 1: connect Phantom and receive devnet SOL.
 import { useState } from "react";
 import { connectPhantom } from "../lib/phantom";
 import { getBalanceLamports, lamportsToSol, shortAddress } from "../lib/solana";
 
 const getBalanceSol = async (a) => lamportsToSol(await getBalanceLamports(a));
 
-export default function Lesson1Connect({ lesson }) {
+export default function Lesson1Connect({ lesson, setWallet, onComplete }) {
   const [address, setAddress] = useState(null);
   const [balance, setBalance] = useState(null);
   const [startBalance, setStartBalance] = useState(null); // balance at connect
@@ -18,6 +18,7 @@ export default function Lesson1Connect({ lesson }) {
       const addr = await connectPhantom();
       const b = await getBalanceSol(addr);
       setAddress(addr);
+      setWallet(addr); // unlocks lessons 2 and 3
       setBalance(b);
       setStartBalance(b);
     } catch (e) {
@@ -32,7 +33,8 @@ export default function Lesson1Connect({ lesson }) {
       setBalance(b);
       const received = b > startBalance; // pass only if new SOL arrived
       setPassed(received);
-      if (!received) setError("No new SOL yet. Request from the faucet, wait a few seconds, then check again.");
+      if (received) onComplete();
+      else setError("No new SOL yet. Request from the faucet, wait a few seconds, then check again.");
     } catch (e) {
       setError(e.message);
     }
