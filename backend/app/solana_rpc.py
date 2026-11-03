@@ -18,7 +18,9 @@ async def get_transaction(signature: str, commitment: str) -> dict | None:
         "method": "getTransaction",
         "params": [
             signature,
-            {"encoding": "jsonParsed", "commitment": commitment, "maxSupportedTransactionVersion": 0},
+            # Devnet carries legacy, v0 and v1 transactions. Asking for less than the tx's version makes
+            # the RPC return an error, which we'd report as "pending" forever.
+            {"encoding": "jsonParsed", "commitment": commitment, "maxSupportedTransactionVersion": 1},
         ],
     }
     try:

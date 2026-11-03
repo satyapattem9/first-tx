@@ -1,5 +1,5 @@
 {
-  "_comment": "Shared contract between frontend and backend. Amounts are in lamports (1 SOL = 1,000,000,000 lamports). Replace every REPLACE_ME value with real devnet addresses before Monday.",
+  "_comment": "Shared contract between frontend and backend. Amounts are in lamports (1 SOL = 1,000,000,000 lamports). Recipient keypairs live in /wallets (gitignored). The look-alike has no private key; regenerate with `python -m scripts.make_lookalike <address>` from backend/.",
   "network": "devnet",
   "lessons": [
     {
@@ -14,7 +14,7 @@
       "title": "Your first send",
       "mode": "real",
       "requiresTransaction": true,
-      "expectedRecipient": "REPLACE_ME_LESSON2_RECIPIENT",
+      "expectedRecipient": "5GQtgY1j5PpBNNrcZ5ZZ1TSyYnFMG3ZUW5aaJNMKEtWT",
       "expectedLamports": 100000000,
       "pass": "Exact submitted transaction succeeded, is confirmed, and matches sender, recipient, and amount."
     },
@@ -23,8 +23,8 @@
       "title": "Scam trap",
       "mode": "real",
       "requiresTransaction": true,
-      "expectedRecipient": "REPLACE_ME_LESSON3_RECIPIENT",
-      "lookalikeRecipient": "REPLACE_ME_LESSON3_LOOKALIKE",
+      "expectedRecipient": "DGuoDXSZSkneoYsezemx2So5LQW5Zd2hCVAbjUzsYycs",
+      "lookalikeRecipient": "DGuoDX5ZSkneoYsczemx2SoSLQW5Zd2hCVAbjUzsYycs",
       "trustedReferenceLabel": "First Tx Club Treasury",
       "expectedLamports": 100000000,
       "pass": "User picked the trusted recipient and the transaction to it succeeded and is confirmed."

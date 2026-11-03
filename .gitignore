@@ -4,6 +4,8 @@
 *.keypair.json
 *-keypair.json
 wallets/
+# Verifier's local record of used signatures
+backend/data/
 
 # Python
 __pycache__/

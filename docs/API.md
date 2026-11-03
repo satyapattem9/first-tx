@@ -29,13 +29,15 @@ Grade one transaction-based lesson attempt from its exact signature.
 
 **Checks, in order**
 
-1. Tx can be fetched from devnet by `signature` (`getTransaction`)
-2. Tx reached the required commitment (`REQUIRED_COMMITMENT`, default `confirmed`)
+0. `wallet` is a valid address and `signature` is a valid 64-byte signature, otherwise `fail` (so a typo can't sit in `pending` forever)
+1. Signature hasn't already been used to pass a *different* lesson (re-verifying the same lesson is fine, so polling is safe)
+2. Tx can be fetched from devnet by `signature` (`getTransaction`) and has reached `REQUIRED_COMMITMENT` (default `confirmed`); if not, `pending`
 3. Tx succeeded (`meta.err` is `null`)
-4. `wallet` is the fee payer / signer
-5. A system-program transfer sends `expectedLamports` to `expectedRecipient`
-   - Lesson 3: destination == `lookalikeRecipient` → `fail` with a scam-trap reason
-6. Signature hasn't already been used for a different lesson
+4. `wallet` is the fee payer
+5. A system-program transfer from `wallet` sends exactly `expectedLamports` to `expectedRecipient`
+   - Lesson 3: destination == `lookalikeRecipient` → `fail` with a reason starting `"Scam trap!"` that shows both full addresses
+
+`reason` is written for the learner; the frontend can show it as is.
 
 **Errors**
 
