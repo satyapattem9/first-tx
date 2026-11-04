@@ -1,4 +1,5 @@
 // "What just happened" card shown after each verified step.
+// "What just happened" card shown after each verified step.
 export default function Insight({ title, why, words = [], warn = false, children }) {
   return (
     <div className={warn ? 'insight warn' : 'insight'}>

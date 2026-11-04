@@ -33,7 +33,7 @@ async function verifyOnChain(signature, from) {
   return { passed: checks.every((c) => c.ok), checks };
 }
 
-export default function Lesson2FirstSend({ lesson, onComplete, onLearn }) {
+export default function Lesson2FirstSend({ lesson, onComplete, onLearn, onReceipt }) {
   const [address, setAddress] = useState(null);
   const [fee, setFee] = useState(null);
   const [step, setStep] = useState("start"); // start | review | signing | confirming | checking | done
@@ -45,7 +45,7 @@ export default function Lesson2FirstSend({ lesson, onComplete, onLearn }) {
     return (
       <section>
         <h2>{lesson.title}</h2>
-        <p style={{ color: "crimson" }}>Missing VITE_LESSON2_WALLET in frontend/.env (restart npm run dev after adding it).</p>
+        <p className="error-line">Missing VITE_LESSON2_WALLET in frontend/.env (restart npm run dev after adding it).</p>
       </section>
     );
   }
@@ -75,6 +75,7 @@ export default function Lesson2FirstSend({ lesson, onComplete, onLearn }) {
       setStep("checking");
       const r = await verifyOnChain(sig, address);
       setResult(r);
+      onReceipt({ title: "Lesson 2 · First send", signature: sig, ok: r.passed, verdict: r.passed ? "Verified" : "Check failed" });
       if (r.passed) {
         onComplete();
         onLearn(["Signature", "Network fee", "Finality"]);
@@ -89,29 +90,35 @@ export default function Lesson2FirstSend({ lesson, onComplete, onLearn }) {
   return (
     <section>
       <h2>{lesson.title}</h2>
-      <p>Send 0.1 SOL to the lesson wallet. Once it confirms, nobody can reverse it.</p>
+      <p className="lesson-intro">Send 0.1 SOL to the lesson wallet. Once it confirms, nobody can reverse it.</p>
 
       {step === "start" && <button onClick={handleReview}>Review transaction</button>}
 
       {step !== "start" && (
-        <div style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16, margin: "12px 0" }}>
-          <p>From: <code>{address && shortAddress(address)}</code></p>
-          <p>To: <code style={{ wordBreak: "break-all" }}>{LESSON_WALLET}</code></p>
-          <p>Amount: <strong>0.1 SOL</strong></p>
-          <p>Network fee: {fee !== null ? `${lamportsToSol(fee)} SOL` : "…"} (paid to the validators who confirm it)</p>
+        <div className="info-box">
+          <div className="info-row"><span>From</span><code>{address && shortAddress(address)}</code></div>
+          <div className="info-row"><span>To</span><code>{shortAddress(LESSON_WALLET)}</code></div>
+          <div className="info-row"><span>Amount</span><strong>0.1 SOL</strong></div>
+          <div className="info-row">
+            <span>Network fee</span>
+            <strong>{fee !== null ? `${lamportsToSol(fee)} SOL` : "…"}</strong>
+          </div>
         </div>
       )}
 
       {step === "review" && <button onClick={handleSend}>Send with Phantom</button>}
-      {step === "signing" && <p>Approve it in Phantom…</p>}
-      {step === "confirming" && <p>Sent. Waiting for devnet to confirm…</p>}
-      {step === "checking" && <p>Checking the chain…</p>}
+      {step === "signing" && <p className="status-line">Approve it in Phantom…</p>}
+      {step === "confirming" && <p className="status-line">Sent. Waiting for devnet to confirm…</p>}
+      {step === "checking" && <p className="status-line">Checking the chain…</p>}
 
       {result && (
-        <div style={{ border: `2px solid ${result.passed ? "green" : "crimson"}`, borderRadius: 12, padding: 16, marginTop: 12 }}>
-          <strong>{result.passed ? "Verified onchain!" : "The chain says something's off"}</strong>
+        <div className={result.passed ? "result-box pass" : "result-box fail"}>
+          <div className="result-title">{result.passed ? "Verified onchain!" : "The chain says something's off"}</div>
           {result.checks.map((c) => (
-            <p key={c.label}>{c.ok ? "✅" : "❌"} {c.label}: <code>{c.value}</code></p>
+            <div key={c.label} className="check-row">
+              <span>{c.ok ? "✅" : "❌"} {c.label}</span>
+              <code>{c.value}</code>
+            </div>
           ))}
           <a href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`} target="_blank" rel="noreferrer">
             View it on the devnet explorer
@@ -133,7 +140,7 @@ export default function Lesson2FirstSend({ lesson, onComplete, onLearn }) {
         </Insight>
       )}
 
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {error && <p className="error-line">{error}</p>}
     </section>
   );
 }

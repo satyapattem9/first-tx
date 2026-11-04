@@ -1,6 +1,6 @@
 // Lesson 1: connect Phantom and receive devnet SOL.
 import { useState } from "react";
-import { connectPhantom } from "../lib/phantom";
+import { connectPhantom, disconnectPhantom } from "../lib/phantom";
 import { getBalanceLamports, lamportsToSol, shortAddress } from "../lib/solana";
 import Insight from "../components/Insight.jsx";
 
@@ -16,6 +16,7 @@ export default function Lesson1Connect({ lesson, setWallet, onComplete, onLearn 
   async function handleConnect() {
     setError("");
     try {
+      await disconnectPhantom(); // forget the old session so Phantom asks again
       const addr = await connectPhantom();
       const b = await getBalanceSol(addr);
       setAddress(addr);
@@ -51,21 +52,39 @@ export default function Lesson1Connect({ lesson, setWallet, onComplete, onLearn 
       <h2>{lesson.title}</h2>
 
       {!address ? (
-        <button onClick={handleConnect}>Connect Phantom (devnet)</button>
+        <>
+          <p className="lesson-intro">
+            Every crypto journey starts with an address. Connect a real wallet, get free test SOL,
+            and let the chain prove it arrived.
+          </p>
+          <ol className="lesson-steps">
+            <li>Connect your Phantom wallet</li>
+            <li>Copy your public address</li>
+            <li>Get free devnet SOL from the faucet</li>
+            <li>Check your work: the chain confirms it arrived</li>
+          </ol>
+          <button onClick={handleConnect}>Connect Phantom (devnet)</button>
+        </>
       ) : (
         <>
-          <p>Wallet: <code>{shortAddress(address)}</code></p>
-          <button onClick={() => navigator.clipboard.writeText(address)}>Copy my address</button>
+          <div className="info-box">
+            <div className="info-row"><span>Wallet</span><code>{shortAddress(address)}</code></div>
+            <div className="info-row"><span>Network</span><strong>Solana devnet</strong></div>
+            <div className="info-row"><span>Balance</span><strong>{balance?.toFixed(3)} SOL</strong></div>
+          </div>
 
-          <p>Balance: <strong>{balance?.toFixed(3)} SOL</strong> (devnet)</p>
           <p>
-            Receive your first SOL: paste your address at{" "}
+            Receive your first SOL: copy your address, then paste it at{" "}
             <a href="https://faucet.solana.com" target="_blank" rel="noreferrer">faucet.solana.com</a>.
           </p>
 
-          <button onClick={handleCheck}>Check my work</button>
+          <div className="button-row">
+            <button className="secondary" onClick={() => navigator.clipboard.writeText(address)}>Copy my address</button>
+            <button onClick={handleCheck}>Check my work</button>
+          </div>
+
           {passed && (
-            <p style={{ color: "green" }}>
+            <p className="success-line">
               Received {(balance - startBalance).toFixed(3)} SOL! The chain shows {balance.toFixed(3)} SOL in your wallet.
             </p>
           )}
@@ -93,7 +112,7 @@ export default function Lesson1Connect({ lesson, setWallet, onComplete, onLearn 
         </>
       )}
 
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {error && <p className="error-line">{error}</p>}
     </section>
   );
 }
