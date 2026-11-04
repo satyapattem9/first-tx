@@ -190,6 +190,7 @@ code {
 .result-box.pass { border-color: var(--green); background: var(--green-soft); }
 .result-box.fail { border-color: var(--red); background: var(--red-soft); }
 .result-title { font-size: 18px; font-weight: 900; margin-bottom: 8px; }
+.result-reason { overflow-wrap: anywhere; }
 .result-box.pass .result-title { color: var(--green-dark); }
 .result-box.fail .result-title { color: var(--red-dark); }
 .check-row {

@@ -1,16 +1,9 @@
-// Lesson 3: the look-alike address. The chain decides if you paid Maya or a scammer.
+// Lesson 3: the look-alike address. The verifier decides if you paid Maya or a scammer.
 import { useState } from "react";
 import { connectPhantom } from "../lib/phantom";
-import {
-  connection, buildTransfer, signAndSend, waitForConfirmation, lamportsToSol, shortAddress,
-} from "../lib/solana";
+import { buildTransfer, signAndSend, waitForConfirmation, shortAddress } from "../lib/solana";
+import { verifyUntilSettled } from "../lib/verify";
 import Insight from "../components/Insight.jsx";
-
-// Same first 4 and last 4 characters. Nobody holds keys to either address,
-// so devnet SOL sent here is gone for good. That's the lesson.
-const MAYA = "4H7f3hSj5KghN3UfU7purQNMtsRArQFtXW3keEZNh66f";
-const SCAMMER = "4H7fER5jq6eHq4vnGab95XiyjvenVZ6pcB2CAXfYh66f";
-const AMOUNT = 100_000_000; // 0.1 SOL
 
 // Shows an address with the middle highlighted
 function Addr({ value, tone }) {
@@ -23,53 +16,58 @@ function Addr({ value, tone }) {
   );
 }
 
-async function checkPayment(signature) {
-  let tx = null;
-  for (let i = 0; i < 5 && !tx; i++) {
-    tx = await connection.getParsedTransaction(signature, {
-      commitment: "confirmed", maxSupportedTransactionVersion: 0,
-    });
-    if (!tx) await new Promise((r) => setTimeout(r, 1000));
-  }
-  const ix = tx?.transaction.message.instructions.find(
-    (i) => i.program === "system" && i.parsed?.type === "transfer"
-  );
-  const info = ix?.parsed?.info || {};
-  const checks = [
-    { label: "Transaction found on devnet", value: shortAddress(signature), ok: !!tx },
-    { label: "Amount", value: `${lamportsToSol(info.lamports || 0)} SOL`, ok: info.lamports === AMOUNT },
-    { label: "Status", value: tx?.meta?.err ? "failed" : "confirmed", ok: !!tx && tx.meta?.err === null },
-    { label: "Sent to Maya's wallet", value: info.destination === MAYA ? shortAddress(MAYA) : "NOT Maya", ok: info.destination === MAYA },
-  ];
-  return { passed: checks.every((c) => c.ok), checks, to: info.destination };
-}
-
 export default function Lesson3ScamTrap({ lesson, onComplete, onLearn, onReceipt }) {
-  const [step, setStep] = useState("ask"); // ask | compare | sending | done
+  // Same first 4 and last 4 characters. Nobody holds keys to either address,
+  // so devnet SOL sent here is gone for good. That's the lesson.
+  const MAYA = lesson.expectedRecipient;
+  const SCAMMER = lesson.lookalikeRecipient;
+  const AMOUNT = lesson.expectedLamports;
+
+  const [step, setStep] = useState("ask"); // ask | compare | sending | checking | unverified | done
   const [signature, setSignature] = useState(null);
+  const [wallet, setWallet] = useState(null);
   const [result, setResult] = useState(null);
+  const [notice, setNotice] = useState(""); // why the result isn't in yet
   const [error, setError] = useState("");
+
+  // Asks the verifier about a sent transaction. Never re-sends it.
+  async function runVerify(sig, from) {
+    setStep("checking");
+    let r;
+    try {
+      r = await verifyUntilSettled({ lessonId: lesson.id, wallet: from, signature: sig });
+    } catch (e) {
+      r = { status: "pending", reason: e.message };
+    }
+    if (r.status === "pending") {
+      setNotice(r.reason);
+      setStep("unverified");
+      return;
+    }
+    const passed = r.status === "pass";
+    setResult({ passed, reason: r.reason, checks: r.checks });
+    onReceipt({
+      title: passed ? "Lesson 3 · Paid Maya" : "Lesson 3 · Look-alike",
+      signature: sig,
+      ok: passed,
+      verdict: passed ? "Verified" : "Wrong wallet",
+    });
+    if (passed) onComplete();
+    onLearn(["Address poisoning"]);
+    setStep("done");
+  }
 
   async function send(to) {
     setError("");
     try {
       setStep("sending");
       const from = await connectPhantom();
+      setWallet(from);
       const tx = await buildTransfer(from, to, AMOUNT);
       const sig = await signAndSend(tx); // Phantom shows 4H7f…h66f either way
       setSignature(sig);
       await waitForConfirmation(sig);
-      const r = await checkPayment(sig);
-      setResult(r);
-      onReceipt({
-        title: r.passed ? "Lesson 3 · Paid Maya" : "Lesson 3 · Look-alike",
-        signature: sig,
-        ok: r.passed,
-        verdict: r.passed ? "Verified" : "Wrong wallet",
-      });
-      if (r.passed) onComplete();
-      onLearn(["Address poisoning"]);
-      setStep("done");
+      await runVerify(sig, from);
     } catch (e) {
       setError(e.message);
       setStep("ask");
@@ -77,7 +75,7 @@ export default function Lesson3ScamTrap({ lesson, onComplete, onLearn, onReceipt
   }
 
   function reset() {
-    setStep("ask"); setResult(null); setSignature(null); setError("");
+    setStep("ask"); setResult(null); setSignature(null); setError(""); setNotice("");
   }
 
   return (
@@ -112,12 +110,20 @@ export default function Lesson3ScamTrap({ lesson, onComplete, onLearn, onReceipt
         </>
       )}
 
-      {step === "sending" && <p className="status-line">Approve in Phantom… then confirming on devnet and checking the chain…</p>}
+      {step === "sending" && <p className="status-line">Approve in Phantom… then confirming on devnet…</p>}
+      {step === "checking" && <p className="status-line">Checking the chain…</p>}
+      {step === "unverified" && (
+        <>
+          <p className="status-line">{notice} Your SOL was sent, so don't send it again.</p>
+          <button onClick={() => runVerify(signature, wallet)}>Check again</button>
+        </>
+      )}
 
       {step === "done" && result && (
         <>
           <div className={result.passed ? "result-box pass" : "result-box fail"}>
             <div className="result-title">{result.passed ? "You paid Maya. Verified onchain!" : "You just paid a scammer."}</div>
+            <p className="result-reason">{result.reason}</p>
             {result.checks.map((c) => (
               <div key={c.label} className="check-row">
                 <span>{c.ok ? "✅" : "❌"} {c.label}</span>
@@ -127,7 +133,7 @@ export default function Lesson3ScamTrap({ lesson, onComplete, onLearn, onReceipt
 
             {!result.passed && (
               <div className="compare-block">
-                <div className="compare-row"><span>You sent to</span><Addr value={result.to || SCAMMER} tone="bad" /></div>
+                <div className="compare-row"><span>You sent to</span><Addr value={SCAMMER} tone="bad" /></div>
                 <div className="compare-row"><span>Maya's real address</span><Addr value={MAYA} tone="good" /></div>
                 <ol className="tips">
                   <li>Check the middle of the address, not just the ends.</li>

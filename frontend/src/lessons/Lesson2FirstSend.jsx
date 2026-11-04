@@ -1,53 +1,47 @@
-// Lesson 2: send 0.1 SOL, then the chain grades it.
+// Lesson 2: send 0.1 SOL, then the verifier grades the real transaction.
 import { useState } from "react";
 import { connectPhantom } from "../lib/phantom";
 import {
-  connection, buildTransfer, estimateFeeLamports, signAndSend,
+  buildTransfer, estimateFeeLamports, signAndSend,
   waitForConfirmation, lamportsToSol, shortAddress,
 } from "../lib/solana";
+import { verifyUntilSettled } from "../lib/verify";
 import Insight from "../components/Insight.jsx";
 
-const LESSON_WALLET = import.meta.env.VITE_LESSON2_WALLET;
-const AMOUNT = 100_000_000; // 0.1 SOL in lamports
-
-// Reads the real transaction from devnet and checks each field.
-async function verifyOnChain(signature, from) {
-  let tx = null;
-  for (let i = 0; i < 5 && !tx; i++) {
-    tx = await connection.getParsedTransaction(signature, {
-      commitment: "confirmed", maxSupportedTransactionVersion: 0,
-    });
-    if (!tx) await new Promise((r) => setTimeout(r, 1000));
-  }
-  const ix = tx?.transaction.message.instructions.find(
-    (i) => i.program === "system" && i.parsed?.type === "transfer"
-  );
-  const info = ix?.parsed?.info || {};
-  const checks = [
-    { label: "Transaction found on devnet", value: shortAddress(signature), ok: !!tx },
-    { label: "From your wallet", value: info.source ? shortAddress(info.source) : "—", ok: info.source === from },
-    { label: "To the lesson wallet", value: info.destination ? shortAddress(info.destination) : "—", ok: info.destination === LESSON_WALLET },
-    { label: "Amount", value: `${lamportsToSol(info.lamports || 0)} SOL`, ok: info.lamports === AMOUNT },
-    { label: "Status", value: tx?.meta?.err ? "failed" : "confirmed", ok: !!tx && tx.meta?.err === null },
-  ];
-  return { passed: checks.every((c) => c.ok), checks };
-}
-
 export default function Lesson2FirstSend({ lesson, onComplete, onLearn, onReceipt }) {
+  const LESSON_WALLET = lesson.expectedRecipient;
+  const AMOUNT = lesson.expectedLamports;
+
   const [address, setAddress] = useState(null);
   const [fee, setFee] = useState(null);
-  const [step, setStep] = useState("start"); // start | review | signing | confirming | checking | done
+  const [step, setStep] = useState("start"); // start | review | signing | confirming | checking | unverified | done
   const [signature, setSignature] = useState(null);
   const [result, setResult] = useState(null);
+  const [notice, setNotice] = useState(""); // why the result isn't in yet
   const [error, setError] = useState("");
 
-  if (!LESSON_WALLET) {
-    return (
-      <section>
-        <h2>{lesson.title}</h2>
-        <p className="error-line">Missing VITE_LESSON2_WALLET in frontend/.env (restart npm run dev after adding it).</p>
-      </section>
-    );
+  // Asks the verifier about a sent transaction. Never re-sends it.
+  async function runVerify(sig, addr) {
+    setStep("checking");
+    let r;
+    try {
+      r = await verifyUntilSettled({ lessonId: lesson.id, wallet: addr, signature: sig });
+    } catch (e) {
+      r = { status: "pending", reason: e.message };
+    }
+    if (r.status === "pending") {
+      setNotice(r.reason);
+      setStep("unverified");
+      return;
+    }
+    const passed = r.status === "pass";
+    setResult({ passed, reason: r.reason, checks: r.checks });
+    onReceipt({ title: "Lesson 2 · First send", signature: sig, ok: passed, verdict: passed ? "Verified" : "Check failed" });
+    if (passed) {
+      onComplete();
+      onLearn(["Signature", "Network fee", "Finality"]);
+    }
+    setStep("done");
   }
 
   async function handleReview() {
@@ -72,15 +66,7 @@ export default function Lesson2FirstSend({ lesson, onComplete, onLearn, onReceip
       setSignature(sig);
       setStep("confirming");
       await waitForConfirmation(sig);
-      setStep("checking");
-      const r = await verifyOnChain(sig, address);
-      setResult(r);
-      onReceipt({ title: "Lesson 2 · First send", signature: sig, ok: r.passed, verdict: r.passed ? "Verified" : "Check failed" });
-      if (r.passed) {
-        onComplete();
-        onLearn(["Signature", "Network fee", "Finality"]);
-      }
-      setStep("done");
+      await runVerify(sig, address);
     } catch (e) {
       setError(e.message);
       setStep("review");
@@ -110,10 +96,17 @@ export default function Lesson2FirstSend({ lesson, onComplete, onLearn, onReceip
       {step === "signing" && <p className="status-line">Approve it in Phantom…</p>}
       {step === "confirming" && <p className="status-line">Sent. Waiting for devnet to confirm…</p>}
       {step === "checking" && <p className="status-line">Checking the chain…</p>}
+      {step === "unverified" && (
+        <>
+          <p className="status-line">{notice} Your SOL was sent, so don't send it again.</p>
+          <button onClick={() => runVerify(signature, address)}>Check again</button>
+        </>
+      )}
 
       {result && (
         <div className={result.passed ? "result-box pass" : "result-box fail"}>
           <div className="result-title">{result.passed ? "Verified onchain!" : "The chain says something's off"}</div>
+          <p className="result-reason">{result.reason}</p>
           {result.checks.map((c) => (
             <div key={c.label} className="check-row">
               <span>{c.ok ? "✅" : "❌"} {c.label}</span>

@@ -1,7 +1,7 @@
 from . import signature_store
 from .base58 import is_pubkey, is_signature
 from .config import REQUIRED_COMMITMENT
-from .models import VerifyRequest, VerifyResponse
+from .models import Check, VerifyRequest, VerifyResponse
 from .solana_rpc import RpcUnavailable, get_transaction
 
 LAMPORTS_PER_SOL = 1_000_000_000
@@ -17,8 +17,47 @@ def _pending(reason: str) -> VerifyResponse:
     return VerifyResponse(status="pending", reason=reason)
 
 
-def _fail(reason: str) -> VerifyResponse:
-    return VerifyResponse(status="fail", reason=reason)
+def _fail(reason: str, checks: list[Check] | None = None) -> VerifyResponse:
+    return VerifyResponse(status="fail", reason=reason, checks=checks or [])
+
+
+def _short(address: str) -> str:
+    return f"{address[:4]}…{address[-4:]}"
+
+
+def _build_checks(
+    req: VerifyRequest, lesson: dict, payer: str | None, shown: dict | None, succeeded: bool
+) -> list[Check]:
+    """The per-field results the lesson screens show as a checklist."""
+    expected_recipient = lesson["expectedRecipient"]
+    label = lesson.get("trustedReferenceLabel")
+    source = shown["source"] if shown else None
+    destination = shown["destination"] if shown else None
+    lamports = shown["lamports"] if shown else 0
+
+    if destination is None:
+        to_value = "—"
+    elif label and destination != expected_recipient:
+        # The short form of a look-alike matches the real one, so it can't be the value shown here.
+        to_value = f"NOT {label}"
+    else:
+        to_value = _short(destination)
+
+    return [
+        Check(label="Transaction found on devnet", value=_short(req.signature), ok=True),
+        Check(
+            label="From your wallet",
+            value=_short(source) if source else "—",
+            ok=payer == req.wallet and source == req.wallet,
+        ),
+        Check(
+            label=f"Sent to {label}'s wallet" if label else "To the lesson wallet",
+            value=to_value,
+            ok=destination == expected_recipient,
+        ),
+        Check(label="Amount", value=_sol(lamports), ok=lamports == lesson["expectedLamports"]),
+        Check(label="Status", value="confirmed" if succeeded else "failed", ok=succeeded),
+    ]
 
 
 def _fee_payer(tx: dict) -> str | None:
@@ -88,48 +127,60 @@ async def verify(req: VerifyRequest, lesson: dict) -> VerifyResponse:
     if tx is None:
         return _pending("Transaction not confirmed yet. Retry in a few seconds.")
 
-    # Check 3
     meta = tx.get("meta") or {}
-    if meta.get("err") is not None:
-        return _fail("The transaction was submitted but failed on chain, so no SOL moved. Try again.")
-
-    # Check 4
+    succeeded = meta.get("err") is None
     payer = _fee_payer(tx)
-    if payer != req.wallet:
-        return _fail("This transaction wasn't sent from your connected wallet.")
-
-    # Check 5
-    transfers = [t for t in _system_transfers(tx) if t["source"] == req.wallet]
-    if not transfers:
-        return _fail("This transaction doesn't contain a SOL transfer from your wallet.")
+    all_transfers = _system_transfers(tx)
+    transfers = [t for t in all_transfers if t["source"] == req.wallet]
 
     lookalike = lesson.get("lookalikeRecipient")
     to_lookalike = [t for t in transfers if lookalike and t["destination"] == lookalike]
     to_expected = [t for t in transfers if t["destination"] == expected_recipient]
+    exact = [t for t in to_expected if t["lamports"] == expected_lamports]
+
+    # The transfer the checklist describes: the one that decides the outcome below.
+    candidates = to_lookalike or exact or to_expected or transfers or all_transfers
+    checks = _build_checks(req, lesson, payer, candidates[0] if candidates else None, succeeded)
+
+    # Check 3
+    if not succeeded:
+        return _fail("The transaction was submitted but failed on chain, so no SOL moved. Try again.", checks)
+
+    # Check 4
+    if payer != req.wallet:
+        return _fail("This transaction wasn't sent from your connected wallet.", checks)
+
+    # Check 5
+    if not transfers:
+        return _fail("This transaction doesn't contain a SOL transfer from your wallet.", checks)
 
     if to_lookalike:
         label = lesson.get("trustedReferenceLabel", "the trusted recipient")
         return _fail(
             f"Scam trap! You sent {_sol(to_lookalike[0]['lamports'])} to {lookalike}, "
-            f"but {label} is {expected_recipient}. They share the same start and end, "
+            f"but {label}'s real address is {expected_recipient}. They share the same start and end, "
             "but they are different addresses, and on mainnet that SOL would be gone. "
-            "Always compare the full address against a trusted source before signing."
+            "Always compare the full address against a trusted source before signing.",
+            checks,
         )
 
     if not to_expected:
         return _fail(
             f"The SOL went to {transfers[0]['destination']}, not the lesson's recipient "
-            f"{expected_recipient}. Check the recipient before signing."
+            f"{expected_recipient}. Check the recipient before signing.",
+            checks,
         )
 
-    if not any(t["lamports"] == expected_lamports for t in to_expected):
+    if not exact:
         return _fail(
             f"You sent {_sol(to_expected[0]['lamports'])} but this lesson asks for exactly "
-            f"{_sol(expected_lamports)}. Check the amount before signing."
+            f"{_sol(expected_lamports)}. Check the amount before signing.",
+            checks,
         )
 
     signature_store.record_pass(req.signature, lesson["id"])
     return VerifyResponse(
         status="pass",
         reason=f"Confirmed on devnet: you sent {_sol(expected_lamports)} to the right address.",
+        checks=checks,
     )

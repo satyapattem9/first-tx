@@ -18,8 +18,14 @@ Grade one transaction-based lesson attempt from its exact signature.
 **Response** (200)
 
 ```json
-{ "status": "pass" | "fail" | "pending", "reason": "Human-readable explanation shown to the learner" }
+{
+  "status": "pass" | "fail" | "pending",
+  "reason": "Human-readable explanation shown to the learner",
+  "checks": [{ "label": "Amount", "value": "0.1 SOL", "ok": true }]
+}
 ```
+
+`checks` is the checklist the lesson screens show. It's empty until the transaction has been read from devnet.
 
 | status | Meaning | Frontend should |
 |---|---|---|

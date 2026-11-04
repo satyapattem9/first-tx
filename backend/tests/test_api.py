@@ -190,6 +190,26 @@ def test_lesson3_lookalike_gets_scam_reason(monkeypatch):
     assert L3["lookalikeRecipient"] in body["reason"] and L3["expectedRecipient"] in body["reason"]
 
 
+def test_lookalike_checklist_flags_recipient_only(monkeypatch):
+    stub_rpc(monkeypatch, make_tx(transfers=[(WALLET, L3["lookalikeRecipient"], L3["expectedLamports"])]))
+    checks = {c["label"]: c for c in post("lesson-3-scam-trap").json()["checks"]}
+    assert checks["Sent to Maya's wallet"]["ok"] is False
+    assert checks["Sent to Maya's wallet"]["value"] == "NOT Maya"
+    assert checks["Amount"]["ok"] is True
+    assert checks["Status"]["ok"] is True
+
+
+def test_pass_returns_all_green_checklist(monkeypatch):
+    stub_rpc(monkeypatch, make_tx(transfers=[(WALLET, L2["expectedRecipient"], L2["expectedLamports"])]))
+    checks = post("lesson-2-first-send").json()["checks"]
+    assert len(checks) == 5 and all(c["ok"] for c in checks)
+
+
+def test_pending_has_no_checklist(monkeypatch):
+    stub_rpc(monkeypatch, None)
+    assert post("lesson-2-first-send").json()["checks"] == []
+
+
 # --- check 6: signature reuse ------------------------------------------------------
 
 

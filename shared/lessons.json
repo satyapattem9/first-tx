@@ -1,5 +1,5 @@
 {
-  "_comment": "Shared contract between frontend and backend. Amounts are in lamports (1 SOL = 1,000,000,000 lamports). Recipient keypairs live in /wallets (gitignored). The look-alike has no private key; regenerate with `python -m scripts.make_lookalike <address>` from backend/.",
+  "_comment": "Shared contract between frontend and backend. Amounts are in lamports (1 SOL = 1,000,000,000 lamports). The frontend reads recipients and amounts from here, and the verifier grades against the same values. Nobody holds keys to the lesson 3 addresses, so devnet SOL sent to them is gone.",
   "network": "devnet",
   "lessons": [
     {
@@ -23,9 +23,9 @@
       "title": "Scam trap",
       "mode": "real",
       "requiresTransaction": true,
-      "expectedRecipient": "DGuoDXSZSkneoYsezemx2So5LQW5Zd2hCVAbjUzsYycs",
-      "lookalikeRecipient": "DGuoDX5ZSkneoYsczemx2SoSLQW5Zd2hCVAbjUzsYycs",
-      "trustedReferenceLabel": "First Tx Club Treasury",
+      "expectedRecipient": "4H7f3hSj5KghN3UfU7purQNMtsRArQFtXW3keEZNh66f",
+      "lookalikeRecipient": "4H7fER5jq6eHq4vnGab95XiyjvenVZ6pcB2CAXfYh66f",
+      "trustedReferenceLabel": "Maya",
       "expectedLamports": 100000000,
       "pass": "User picked the trusted recipient and the transaction to it succeeded and is confirmed."
     }

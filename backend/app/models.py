@@ -11,6 +11,13 @@ class VerifyRequest(BaseModel):
     signature: str
 
 
+class Check(BaseModel):
+    label: str
+    value: str
+    ok: bool
+
+
 class VerifyResponse(BaseModel):
     status: Literal["pass", "fail", "pending"]
     reason: str
+    checks: list[Check] = []
