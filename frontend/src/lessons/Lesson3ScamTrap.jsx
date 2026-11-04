@@ -13,11 +13,11 @@ const SCAMMER = "4H7fER5jq6eHq4vnGab95XiyjvenVZ6pcB2CAXfYh66f";
 const AMOUNT = 100_000_000; // 0.1 SOL
 
 // Shows an address with the middle highlighted
-function Addr({ value, color }) {
+function Addr({ value, tone }) {
   return (
-    <code style={{ wordBreak: "break-all" }}>
+    <code className="addr">
       {value.slice(0, 4)}
-      <span style={{ color, fontWeight: 700, textDecoration: "underline" }}>{value.slice(4, -4)}</span>
+      <span className={`addr-mid ${tone}`}>{value.slice(4, -4)}</span>
       {value.slice(-4)}
     </code>
   );
@@ -44,7 +44,7 @@ async function checkPayment(signature) {
   return { passed: checks.every((c) => c.ok), checks, to: info.destination };
 }
 
-export default function Lesson3ScamTrap({ lesson, onComplete, onLearn }) {
+export default function Lesson3ScamTrap({ lesson, onComplete, onLearn, onReceipt }) {
   const [step, setStep] = useState("ask"); // ask | compare | sending | done
   const [signature, setSignature] = useState(null);
   const [result, setResult] = useState(null);
@@ -61,6 +61,12 @@ export default function Lesson3ScamTrap({ lesson, onComplete, onLearn }) {
       await waitForConfirmation(sig);
       const r = await checkPayment(sig);
       setResult(r);
+      onReceipt({
+        title: r.passed ? "Lesson 3 · Paid Maya" : "Lesson 3 · Look-alike",
+        signature: sig,
+        ok: r.passed,
+        verdict: r.passed ? "Verified" : "Wrong wallet",
+      });
       if (r.passed) onComplete();
       onLearn(["Address poisoning"]);
       setStep("done");
@@ -78,50 +84,57 @@ export default function Lesson3ScamTrap({ lesson, onComplete, onLearn }) {
     <section>
       <h2>{lesson.title}</h2>
 
-      <div style={{ background: "#f1f1f5", borderRadius: 12, padding: 12, maxWidth: 440 }}>
-        <strong>Maya</strong>
+      <div className="chat-bubble">
+        <div className="chat-name">Maya</div>
         <p>thx for covering lunch! send 0.1 SOL here:</p>
-        <code style={{ wordBreak: "break-all" }}>{MAYA}</code>
+        <code className="addr">{MAYA}</code>
       </div>
 
       {step === "ask" && (
         <>
           <p>You pasted her address into the send form. It shows:</p>
-          <p style={{ fontSize: 24 }}><code>{shortAddress(SCAMMER)}</code></p>
-          <button onClick={() => send(SCAMMER)}>Looks right, send it</button>{" "}
-          <button onClick={() => setStep("compare")}>Compare the full address first</button>
+          <div className="big-address"><code>{shortAddress(SCAMMER)}</code></div>
+          <div className="button-row">
+            <button onClick={() => send(SCAMMER)}>Looks right, send it</button>
+            <button className="secondary" onClick={() => setStep("compare")}>Compare the full address first</button>
+          </div>
         </>
       )}
 
       {step === "compare" && (
         <>
-          <p>Maya's message: <Addr value={MAYA} color="green" /></p>
-          <p>Your clipboard: <Addr value={SCAMMER} color="crimson" /></p>
+          <div className="info-box">
+            <div className="compare-row"><span>Maya's message</span><Addr value={MAYA} tone="good" /></div>
+            <div className="compare-row"><span>Your clipboard</span><Addr value={SCAMMER} tone="bad" /></div>
+          </div>
           <p>Your clipboard was swapped. Only the first 4 and last 4 characters match, and that's all most wallets show you.</p>
           <button onClick={() => send(MAYA)}>Send to Maya's real address</button>
         </>
       )}
 
-      {step === "sending" && <p>Approve in Phantom… then confirming on devnet and checking the chain…</p>}
+      {step === "sending" && <p className="status-line">Approve in Phantom… then confirming on devnet and checking the chain…</p>}
 
       {step === "done" && result && (
         <>
-          <div style={{ border: `2px solid ${result.passed ? "green" : "crimson"}`, borderRadius: 12, padding: 16, marginTop: 12 }}>
-            <strong>{result.passed ? "You paid Maya. Verified onchain!" : "You just paid a scammer."}</strong>
+          <div className={result.passed ? "result-box pass" : "result-box fail"}>
+            <div className="result-title">{result.passed ? "You paid Maya. Verified onchain!" : "You just paid a scammer."}</div>
             {result.checks.map((c) => (
-              <p key={c.label}>{c.ok ? "✅" : "❌"} {c.label}: <code>{c.value}</code></p>
+              <div key={c.label} className="check-row">
+                <span>{c.ok ? "✅" : "❌"} {c.label}</span>
+                <code>{c.value}</code>
+              </div>
             ))}
 
             {!result.passed && (
-              <>
-                <p>You sent to: <Addr value={result.to || SCAMMER} color="crimson" /></p>
-                <p>Maya's real address: <Addr value={MAYA} color="green" /></p>
-                <ol>
+              <div className="compare-block">
+                <div className="compare-row"><span>You sent to</span><Addr value={result.to || SCAMMER} tone="bad" /></div>
+                <div className="compare-row"><span>Maya's real address</span><Addr value={MAYA} tone="good" /></div>
+                <ol className="tips">
                   <li>Check the middle of the address, not just the ends.</li>
                   <li>Save people you pay often in your wallet's address book.</li>
                   <li>Send a tiny test amount before a big one.</li>
                 </ol>
-              </>
+              </div>
             )}
 
             <a href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`} target="_blank" rel="noreferrer">
@@ -150,17 +163,15 @@ export default function Lesson3ScamTrap({ lesson, onComplete, onLearn }) {
             </Insight>
           )}
 
-          <div style={{ marginTop: 12 }}>
-            {result.passed ? (
-              <button onClick={reset}>Replay the lesson</button>
-            ) : (
-              <button onClick={reset}>Try again</button>
-            )}
+          <div className="button-row">
+            <button className={result.passed ? "secondary" : ""} onClick={reset}>
+              {result.passed ? "Replay the lesson" : "Try again"}
+            </button>
           </div>
         </>
       )}
 
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {error && <p className="error-line">{error}</p>}
     </section>
   );
 }
